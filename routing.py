@@ -4,9 +4,9 @@ from pathfinding.finder.a_star import AStarFinder
 import matplotlib.pyplot as plt
 from utilities import *
 
-def route_wire_lees(rectangles, rectangle, source_point):
-    gridw = 200
-    gridh = 200
+def route_wire_lees(rectangles, rectangle, source_point, space_width, space_height):
+    gridw = space_width
+    gridh = space_height
     # Similar logic to generate matrix and grid as in A* function
     matrix = [[0 for _ in range(gridw)] for __ in range(gridh)]
 
@@ -79,8 +79,8 @@ def route_wire_lees(rectangles, rectangle, source_point):
     return path[::-1]  # The path is traced from `dest` to `src`, so reverse it before returning
 
 count = 0
-def route_wire_a_star(rectangles, rectangle, source_point):
-    matrix = [[0 for _ in range(200)] for __ in range(200)]
+def route_wire_a_star(rectangles, rectangle, source_point, space_width, space_height):
+    matrix = [[0 for _ in range(space_width)] for __ in range(space_height)]
 
     for rect in rectangles:
         if rect.id != rectangle.id:
@@ -90,7 +90,7 @@ def route_wire_a_star(rectangles, rectangle, source_point):
     # matrix = rotate_180(matrix)
 
     # Invert matrix vertically
-    matrix = matrix[::-1]
+    # matrix = matrix[::-1]
     # matrx_plt = matrix
 
     # global count
@@ -138,9 +138,9 @@ def heuristic(start, target):
     return abs(start[0] - target[0]) + abs(start[1] - target[1])
 
 
-def route_wire_a_star2(rectangles, rectangle, source_point):
+def route_wire_a_star2(rectangles, rectangle, source_point, space_width, space_height):
     # Initialize grid
-    grid = [[0 for _ in range(300)] for __ in range(300)]
+    grid = [[0 for _ in range(space_width)] for __ in range(space_height)]
     for rect in rectangles:
         if rect.id != rectangle.id:
             for i in range(int(rect.x), int(rect.x + rect.width)):
@@ -178,7 +178,7 @@ def route_wire_a_star2(rectangles, rectangle, source_point):
             for dy in [-1, 0, 1]:
                 next = (current[0] + dx, current[1] + dy)
                 new_cost = cost_so_far[current] + 1
-                if 0 <= next[0] < 300 and 0 <= next[1] < 300 and grid[next[0]][next[1]] != -1 and (
+                if 0 <= next[0] < space_width and 0 <= next[1] < space_height and grid[next[0]][next[1]] != -1 and (
                         next not in cost_so_far or new_cost < cost_so_far[next]):
                     cost_so_far[next] = new_cost
                     priority = new_cost + heuristic(goal, next)

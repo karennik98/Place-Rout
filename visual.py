@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from routing import *
 
-def visualize_rectangles_and_wires(rectangles, routing_algorithm):
+def visualize_rectangles_and_wires(rectangles, routing_algorithm, space_width, space_height):
     fig, ax = plt.subplots()
 
     for rectangle in rectangles:
@@ -17,7 +17,7 @@ def visualize_rectangles_and_wires(rectangles, routing_algorithm):
         for point in rectangle.points:
             point_coordinates = (rectangle.x + point.x * rectangle.width, rectangle.y + point.y * rectangle.height)
             ax.plot(*point_coordinates, 'ro')
-            path = routing_algorithm(rectangles, rectangle, point)
+            path = routing_algorithm(rectangles, rectangle, point, space_width, space_height)
             print('1')
             for node_1, node_2 in zip(path[:-1], path[1:]):
                 ax.plot([node_1[0], node_2[0]], [node_1[1], node_2[1]], 'b-')
@@ -71,7 +71,7 @@ def visualize_rectangles(rectangles):
     plt.show()
 
 
-def visualize_rectangles_and_wires2(rectangles):
+def visualize_rectangles_and_wires2(rectangles, space_width, space_height):
     fig, ax = plt.subplots()
 
     point_dict = {}
@@ -102,7 +102,7 @@ def visualize_rectangles_and_wires2(rectangles):
             # Adding point id
             ax.text(point_coords[0], point_coords[1], f'id: {point.id}', fontsize=8)
 
-            path = route_wire_a_star2(rectangles, rectangle, point)  # draw path between points
+            path = route_wire_a_star2(rectangles, rectangle, point, space_width, space_height)  # draw path between points
             for node_1, node_2 in zip(path[:-1], path[1:]):
                 ax.plot([node_1[0], node_2[0]], [node_1[1], node_2[1]], 'b-')
 

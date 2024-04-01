@@ -1,0 +1,26 @@
+{
+  "blocks": [
+    {
+      "id": "B1", "height": 42, "width": 37
+    },
+    {
+      "id": "B2", "height": 20, "width": 33
+    },
+    {
+      "id": "B3", "height": 26, "width": 50
+    }
+  ],
+  "nets": [
+    {
+      "id": "N1",
+      "connectedBlocks": ["B1", "B2"]
+    },
+    {
+      "id": "N2",
+      "connectedBlocks": ["B2", "B3"]
+    }
+  ]
+}
+
+
+

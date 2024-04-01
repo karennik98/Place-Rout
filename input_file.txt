@@ -1,0 +1,20 @@
+* This is a comment
+.NumBlocks : 4
+.NumNets : 3
+.NumRows : 3
+
+* Blocsk Section
+U1 3 2
+U2 2 2
+U3 3 2
+U4 2 2
+
+* Nets Section
+N1 : U1 U2
+N2 : U2 U3
+N3 : U3 U4
+
+* Rows Section
+ROW-1 : 10
+ROW-2 : 10
+ROW-3 : 10
