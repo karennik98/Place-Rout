@@ -78,7 +78,7 @@ def visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_wid
     ax.set_ylim([0, boundary_height])
 
     for block in sram_blocks:
-        ax.add_patch(plt.Rectangle((block.x, block.y), block.width, block.height, color='blue'))
+        ax.add_patch(plt.Rectangle((block.x, block.y), block.width, block.height, color='blue', alpha=0.3))
         for pin in block.pins:
             pin_plot_x = block.x + pin['x'] * block.width
             pin_plot_y = block.y + pin['y'] * block.height
@@ -248,12 +248,14 @@ def visualize_routing(sram_blocks, nets, grid, boundary_height, boundary_width):
 
     for block in sram_blocks:
         ax.add_patch(plt.Rectangle((block.x, block.y), block.width, block.height, color='blue', alpha=0.3))
+        ax.text(block.x, block.y, block.uid, fontsize=6, ha='center')
 
     for block in sram_blocks:
         for pin in block.pins:
             pin_plot_x = block.x + pin['x'] * block.width
             pin_plot_y = block.y + pin['y'] * block.height
             ax.plot(pin_plot_x, pin_plot_y, 'ro')
+            ax.text(pin_plot_x, pin_plot_y, pin['uid'], fontsize=6, ha='center')
 
     for net in nets:
         start_block = next(block for block in sram_blocks if block.uid == net['start_pin']['block_uid'])
@@ -266,11 +268,15 @@ def visualize_routing(sram_blocks, nets, grid, boundary_height, boundary_width):
 
         path = Astar(grid, start_pin_coordinates, end_pin_coordinates)
         for coordinates in path:
+            grid[coordinates[0], coordinates[1]] = 1
+
+        for coordinates in path:
             grid[coordinates[0], coordinates[1]] = 3    # Mark path on the grid
 
         color = next(colors)  # Cycle to next color
         for index in range(len(path) - 1):
-            ax.plot([path[index][1], path[index + 1][1]], [path[index][0], path[index + 1][0]], color=color, linewidth=0.5)  # Drawing the path with the color
+            ax.plot([path[index][1], path[index + 1][1]], [path[index][0], path[index + 1][0]], color=color, linewidth=1)  # Drawing the path with the color
+        ax.text((path[0][1] + path[-1][1]) / 2, (path[0][0] + path[-1][0]) / 2, net['uid'], fontsize=6, ha='center')  # Draw net uid in the middle of the net
 
     plt.show()
 
