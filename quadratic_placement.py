@@ -15,7 +15,8 @@ class Block:
 
 
 def generate_input_json(min_width, max_width, min_height, max_height, min_pins_count, max_pins_count, num_blocks,
-                        filename):
+                        obstacles_count, min_obstacle_width, max_obstacle_width, min_obstacle_height,
+                        max_obstacle_height, filename):
     blocks = [
         {
             'uid': f'Block{i}',
@@ -39,7 +40,19 @@ def generate_input_json(min_width, max_width, min_height, max_height, min_pins_c
             'end_pin': {'block_uid': end_block['uid'], 'pin_uid': end_block['pins'][0]['uid']}
         })
 
-    data = {'sram_blocks': blocks, 'nets': nets}
+    obstacles = [
+        {
+            'uid': f'Obstacle{i}',
+            'width': random.randint(min_obstacle_width, max_obstacle_width),
+            'height': random.randint(min_obstacle_height, max_obstacle_height),
+            'x': random.randint(0, boundary_width - max_obstacle_width),
+            # x position now can't exceed the grid boundary
+            'y': random.randint(0, boundary_height - max_obstacle_height)
+            # y position now can't exceed the grid boundary
+        } for i in range(obstacles_count)
+    ]
+
+    data = {'sram_blocks': blocks, 'nets': nets, 'obstacles': obstacles}
 
     with open(filename, 'w') as f:
         json.dump(data, f)
@@ -51,7 +64,9 @@ def load_blocks_from_json(filename):
     sram_blocks = [Block(block['height'], block['width'], block['uid'], pins=block['pins']) for block in
                    data['sram_blocks']]
     nets = data['nets']
-    return sram_blocks, nets
+    obstacles = [Block(obstacle['height'], obstacle['width'], obstacle['uid'], x=obstacle['x'], y=obstacle['y']) for obstacle in data['obstacles']]
+
+    return sram_blocks, nets, obstacles
 
 def save_blocks_to_json(sram_blocks, filename):
     blocks = [
@@ -72,17 +87,25 @@ def save_blocks_to_json(sram_blocks, filename):
         json.dump(data, f)
 
 
-def visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_width):
+def visualize_initial_placement(sram_blocks, nets, obstacles, boundary_height, boundary_width):
     fig, ax = plt.subplots()
     ax.set_xlim([0, boundary_width])
     ax.set_ylim([0, boundary_height])
 
+    # Draw blocks in blue
     for block in sram_blocks:
         ax.add_patch(plt.Rectangle((block.x, block.y), block.width, block.height, color='blue', alpha=0.3))
+        ax.text(block.x, block.y, block.uid, fontsize=6, ha='center')  # Draw block uid
         for pin in block.pins:
             pin_plot_x = block.x + pin['x'] * block.width
             pin_plot_y = block.y + pin['y'] * block.height
             ax.plot(pin_plot_x, pin_plot_y, 'ro')
+            ax.text(pin_plot_x, pin_plot_y, pin['uid'], fontsize=6, ha='center')  # Draw pin uid
+
+    # Draw obstacles in black
+    for obstacle in obstacles:
+        ax.add_patch(plt.Rectangle((obstacle.x, obstacle.y), obstacle.width, obstacle.height, color='black'))
+        # ax.text(obstacle.x, obstacle.y, obstacle.uid, fontsize=6, ha='center', color='')  # Draw obstacle uid
 
     # Visualize nets
     for net in nets:
@@ -104,6 +127,7 @@ def visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_wid
         end_pin_plot_y = end_block.y + end_pin['y'] * end_block.height
 
         ax.plot([start_pin_plot_x, end_pin_plot_x], [start_pin_plot_y, end_pin_plot_y], 'r-')
+        ax.text((start_pin_plot_x + end_pin_plot_x) / 2, (start_pin_plot_y + end_pin_plot_y) / 2, net['uid'], fontsize=6, ha='center')  # Draw net uid
 
     plt.show()
 
@@ -119,11 +143,32 @@ def create_horizontal_grid(boundary_height, boundary_width, grid_spacing):
     return lines
 
 
-def random_placement(blocks, boundary_height, boundary_width, min_spacing):
-    for block in blocks:
-        block.x = random.randint(min_spacing, boundary_width - block.width - min_spacing)
-        block.y = random.randint(min_spacing, boundary_height - block.height - min_spacing)
-    return blocks
+def random_placement(sram_blocks, obstacles, boundary_height, boundary_width, min_spacing):
+    for block in sram_blocks:
+        while True:  # keep trying until we break out of loop when an empty placement is found
+            block.x = random.randint(min_spacing, boundary_width - block.width - min_spacing)
+            block.y = random.randint(min_spacing, boundary_height - block.height - min_spacing)
+
+            # Check if the new position clashes with any existing obstacles.
+            no_clashes = True
+            for obstacle in obstacles:
+                if (block.x < obstacle.x + obstacle.width and block.x + block.width > obstacle.x and
+                        block.y < obstacle.y + obstacle.height and block.y + block.height > obstacle.y):
+                    no_clashes = False
+                    break
+
+            # Check if new position clashes with existing blocks
+            for existing_block in [b for b in sram_blocks if b.x is not None and b.y is not None]:
+                if existing_block == block:
+                    continue
+                if (block.x < existing_block.x + existing_block.width and block.x + block.width > existing_block.x and
+                        block.y < existing_block.y + existing_block.height and block.y + block.height > existing_block.y):
+                    no_clashes = False
+                    break
+
+            if no_clashes:
+                break  # found an empty spot, break infinite loop
+    return sram_blocks
 
 
 def quadratic_placement(blocks, boundary_height, boundary_width, min_spacing):
@@ -238,10 +283,13 @@ def Astar(grid, start, end):
 
 import itertools
 
-def visualize_routing(sram_blocks, nets, grid, boundary_height, boundary_width):
+def visualize_placement_and_routing(sram_blocks, nets, grid, obstacles, boundary_height, boundary_width):
     fig, ax = plt.subplots()
     ax.set_xlim([0, boundary_width])
     ax.set_ylim([0, boundary_height])
+
+    for obstacle in obstacles:
+        ax.add_patch(plt.Rectangle((obstacle.x, obstacle.y), obstacle.width, obstacle.height, color='black'))
 
     # Define a color cycle iterator for different paths
     colors = itertools.cycle(['r', 'g', 'b', 'c', 'm', 'y', 'k'])
@@ -288,24 +336,34 @@ if __name__ == "__main__":
     max_width = 20
     min_height = 20
     max_height = 20
-    num_blocks = 100
+    num_blocks = 90
     min_pins_count = 1
     max_pins_count = 2
 
-    generate_input_json(min_width, max_width, min_height, max_height, min_pins_count, max_pins_count, num_blocks, "input.json")
+    obstacles_count = 4
+    min_obstacle_width = 10
+    max_obstacle_width = 20
+    min_obstacle_height = 10
+    max_obstacle_height = 20
 
-    sram_blocks, nets = load_blocks_from_json("input.json")
+    generate_input_json(min_width, max_width, min_height, max_height, min_pins_count, max_pins_count, num_blocks,
+                        obstacles_count, min_obstacle_width, max_obstacle_width, min_obstacle_height, max_obstacle_height, "input.json")
+
+    sram_blocks, nets, obstacles = load_blocks_from_json("input.json")
     min_spacing = 30
     grip_spacing = 15
 
-    random_placement(sram_blocks, boundary_height, boundary_width, min_spacing)
-    visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_width)
+    random_placement(sram_blocks, obstacles, boundary_height, boundary_width, min_spacing)
+    visualize_initial_placement(sram_blocks, nets, obstacles, boundary_height, boundary_width)
 
     quadratic_placement(sram_blocks, boundary_height, boundary_width, min_spacing)
-    visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_width)
+    visualize_initial_placement(sram_blocks, nets, obstacles, boundary_height, boundary_width)
 
     # Generate a 2D grid with the boundaries defined.
     grid = np.zeros((boundary_height, boundary_width))
+
+    for obstacle in obstacles:
+        grid[obstacle.y:obstacle.y + obstacle.height, obstacle.x:obstacle.x + obstacle.width] = 1
 
     # Mark all cells within a block as 1.
     for block in sram_blocks:
@@ -353,7 +411,7 @@ if __name__ == "__main__":
             grid[coordinates[0], coordinates[1]] = 3
 
     print(2)
-    visualize_routing(sram_blocks, nets, grid, boundary_height, boundary_width)
+    visualize_placement_and_routing(sram_blocks, nets, grid, obstacles, boundary_height, boundary_width)
     print(3)
     # visualize_initial_placement(sram_blocks, nets, boundary_height, boundary_width)
     save_blocks_to_json(sram_blocks, 'output.json')
